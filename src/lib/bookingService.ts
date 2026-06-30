@@ -17,7 +17,74 @@ export const bookingService = {
       snapshot.forEach((d) => {
         items.push({ id: d.id, ...d.data() } as RSVP);
       });
-      return items;
+
+      // Group RSVPs by family_id (or email if family_id is absent) to detect duplicates
+      const grouped = new Map<string, RSVP[]>();
+      items.forEach(rsvp => {
+        const key = rsvp.family_id || rsvp.email || rsvp.id;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push(rsvp);
+      });
+
+      const uniqueRSVPs: RSVP[] = [];
+      const duplicateDocIdsToDelete: string[] = [];
+
+      for (const [key, rsvpsList] of grouped.entries()) {
+        if (rsvpsList.length === 1) {
+          uniqueRSVPs.push(rsvpsList[0]);
+        } else {
+          // Sort duplicates so the best record (matching family_id or latest) is first
+          rsvpsList.sort((a, b) => {
+            const aIsStandard = a.id === a.family_id;
+            const bIsStandard = b.id === b.family_id;
+            if (aIsStandard && !bIsStandard) return -1;
+            if (!aIsStandard && bIsStandard) return 1;
+
+            const timeA = new Date(a.created_at || a.updated_at || 0).getTime();
+            const timeB = new Date(b.created_at || b.updated_at || 0).getTime();
+            return timeB - timeA;
+          });
+
+          const bestRSVP = rsvpsList[0];
+          uniqueRSVPs.push(bestRSVP);
+
+          for (let i = 1; i < rsvpsList.length; i++) {
+            duplicateDocIdsToDelete.push(rsvpsList[i].id);
+          }
+
+          // Migrate to standard family_id format if it's currently using a random ID
+          if (bestRSVP.family_id && bestRSVP.id !== bestRSVP.family_id) {
+            const oldId = bestRSVP.id;
+            bestRSVP.id = bestRSVP.family_id;
+            try {
+              await setDoc(doc(db, path, bestRSVP.family_id), bestRSVP);
+              duplicateDocIdsToDelete.push(oldId);
+            } catch (err) {
+              console.error('Failed to migrate duplicate RSVP to family_id:', err);
+            }
+          }
+        }
+      }
+
+      // Delete duplicates in the background asynchronously
+      if (duplicateDocIdsToDelete.length > 0) {
+        duplicateDocIdsToDelete.forEach(docId => {
+          deleteDoc(doc(db, path, docId)).catch(err => {
+            console.error(`Failed to delete duplicate RSVP: ${docId}`, err);
+          });
+        });
+      }
+
+      // Sort final unique RSVPs by created_at desc
+      uniqueRSVPs.sort((a, b) => {
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return uniqueRSVPs;
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, path);
       return [];
@@ -30,13 +97,16 @@ export const bookingService = {
     }
     const path = 'rsvp';
     try {
-      const docRef = doc(collection(db, path));
+      const docId = rsvp.id || rsvp.family_id || doc(collection(db, path)).id;
+      const docRef = doc(db, path, docId);
       const cleanData = {
         ...rsvp,
-        id: docRef.id,
-        created_at: rsvp.created_at || new Date().toISOString()
+        id: docId,
+        created_at: rsvp.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
-      await setDoc(docRef, cleanData);
+      // Use { merge: true } to support standard Upsert without overwriting extra fields
+      await setDoc(docRef, cleanData, { merge: true });
     } catch (error: any) {
       if (error?.message?.includes("Missing or insufficient permissions")) {
          console.warn(`[Preview Environment] Ignored RSVP submission. Rules restricted.`);
@@ -58,7 +128,67 @@ export const bookingService = {
       snapshot.forEach((d) => {
         items.push({ id: d.id, ...d.data() } as TransportRequest);
       });
-      return items;
+
+      // Deduplicate transports by family_id
+      const grouped = new Map<string, TransportRequest[]>();
+      items.forEach(t => {
+        const key = t.family_id || t.id;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push(t);
+      });
+
+      const uniqueTransports: TransportRequest[] = [];
+      const duplicateDocIdsToDelete: string[] = [];
+
+      for (const [key, list] of grouped.entries()) {
+        if (list.length === 1) {
+          uniqueTransports.push(list[0]);
+        } else {
+          // Sort duplicates so the best record (matching family_id or latest) is first
+          list.sort((a, b) => {
+            const aIsStandard = a.id === a.family_id;
+            const bIsStandard = b.id === b.family_id;
+            if (aIsStandard && !bIsStandard) return -1;
+            if (!aIsStandard && bIsStandard) return 1;
+
+            const timeA = new Date(a.created_at || a.updated_at || 0).getTime();
+            const timeB = new Date(b.created_at || b.updated_at || 0).getTime();
+            return timeB - timeA;
+          });
+
+          const bestTransport = list[0];
+          uniqueTransports.push(bestTransport);
+
+          for (let i = 1; i < list.length; i++) {
+            duplicateDocIdsToDelete.push(list[i].id);
+          }
+
+          // Migrate to standard family_id format if it's currently using a random ID
+          if (bestTransport.family_id && bestTransport.id !== bestTransport.family_id) {
+            const oldId = bestTransport.id;
+            bestTransport.id = bestTransport.family_id;
+            try {
+              await setDoc(doc(db, path, bestTransport.family_id), bestTransport);
+              duplicateDocIdsToDelete.push(oldId);
+            } catch (err) {
+              console.error('Failed to migrate duplicate transport to family_id:', err);
+            }
+          }
+        }
+      }
+
+      // Delete duplicate transports asynchronously in background
+      if (duplicateDocIdsToDelete.length > 0) {
+        duplicateDocIdsToDelete.forEach(docId => {
+          deleteDoc(doc(db, path, docId)).catch(err => {
+            console.error(`Failed to delete duplicate transport: ${docId}`, err);
+          });
+        });
+      }
+
+      return uniqueTransports;
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, path);
       return [];
@@ -71,13 +201,16 @@ export const bookingService = {
     }
     const path = 'transport_requests';
     try {
-      const docRef = doc(collection(db, path));
+      const docId = transport.id || transport.family_id || doc(collection(db, path)).id;
+      const docRef = doc(db, path, docId);
       const cleanData = {
         ...transport,
-        id: docRef.id,
-        created_at: transport.created_at || new Date().toISOString()
+        id: docId,
+        created_at: transport.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
-      await setDoc(docRef, cleanData);
+      // Use { merge: true } to support standard Upsert without overwriting extra fields
+      await setDoc(docRef, cleanData, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }

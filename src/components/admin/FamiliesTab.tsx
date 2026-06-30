@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Family } from '../../types';
-import { Trash2, QrCode, X, Printer, Edit2, Upload, Loader2, Image as ImageIcon, Save, Check, Type, FileText } from 'lucide-react';
+import { Trash2, QrCode, X, Printer, Edit2, Upload, Loader2, Image as ImageIcon, Save, Check, Type, FileText, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { dataService } from '../../lib/dataService';
 
@@ -438,8 +438,35 @@ export default function FamiliesTab({
                 )}
               </div>
 
+              {/* Uploaded Documents Verification Panel for Admins */}
+              {editFamily.documents && editFamily.documents.length > 0 && (
+                <div className="text-left mt-4 border-t border-white/10 pt-4 space-y-2">
+                  <span className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60 font-mono block">
+                    Verification Documents ({editFamily.documents.length})
+                  </span>
+                  <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                    {editFamily.documents.map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between gap-2 p-2 bg-white/5 border border-white/5 rounded-lg text-xs">
+                        <span className="truncate text-white/80 flex items-center gap-1.5 max-w-[80%]" title={doc.name}>
+                          <FileText size={12} className="text-gold flex-shrink-0" />
+                          {doc.name}
+                        </span>
+                        <a 
+                          href={doc.url} 
+                          download={doc.name} 
+                          className="p-1 hover:bg-white/10 rounded text-gold transition-colors flex items-center justify-center"
+                          title="Download Document"
+                        >
+                          <Download size={12} />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Informative Help tip */}
-              <div className="p-3 bg-gold/5 border border-gold/20 text-[9px] text-[#D4AF37] rounded-lg leading-relaxed text-left">
+              <div className="p-3 bg-gold/5 border border-gold/20 text-[9px] text-[#D4AF37] rounded-lg leading-relaxed text-left mt-4">
                 <strong>Aesthetic Design Pattern:</strong> This preview mimics how the guest dashboard welcomes guests when their unique URL is rendered or QR codes are decrypted.
               </div>
             </div>

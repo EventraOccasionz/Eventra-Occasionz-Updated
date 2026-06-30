@@ -27,7 +27,7 @@ export default function Services() {
 
   const filteredServices = filter === 'all' 
     ? services 
-    : services.filter(s => s.cat.toLowerCase() === filter.toLowerCase());
+    : services.filter(s => (s.cat || '').toLowerCase() === filter.toLowerCase());
 
   return (
     <section id="services" className="bg-dark-2 py-32 px-8 md:px-20">

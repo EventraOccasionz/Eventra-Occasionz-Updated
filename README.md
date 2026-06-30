@@ -18,7 +18,3 @@ View your app in AI Studio: https://ai.studio/apps/20c5ac4e-3c07-469f-8595-3d16d
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
-# Eventra-Occasionz-Updated
-# Eventra-Occasionz-Updated
-# Eventra-Occasionz-Updated
-# Eventra-Occasionz-Updated

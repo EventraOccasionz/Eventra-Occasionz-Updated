@@ -11,7 +11,7 @@ import {
   Trash2, Download, LogOut, CheckCircle2,
   XCircle, Loader2, RefreshCcw, Database,
   Briefcase, Image, Edit, FileText, Save, Eye, EyeOff,
-  PlusCircle, ArrowUp, ArrowDown, Shield, Map
+  PlusCircle, ArrowUp, ArrowDown, Shield, Map, QrCode
 } from 'lucide-react';
 
 // Lazy Loaded Modular Panels
@@ -25,6 +25,8 @@ const TransportTab = React.lazy(() => import('../components/admin/TransportTab')
 const RoomsTab = React.lazy(() => import('../components/admin/RoomsTab'));
 const AuditTab = React.lazy(() => import('../components/admin/AuditTab'));
 const MapTab = React.lazy(() => import('../components/admin/MapTab'));
+const DocumentsTab = React.lazy(() => import('../components/admin/DocumentsTab'));
+const CountdownTab = React.lazy(() => import('../components/admin/CountdownTab'));
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -44,7 +46,7 @@ export default function AdminDashboard() {
 
   // Search / Tab States
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'services' | 'gallery' | 'guests' | 'families' | 'transport' | 'rooms' | 'audit' | 'map'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'services' | 'gallery' | 'guests' | 'families' | 'transport' | 'rooms' | 'audit' | 'map' | 'documents' | 'countdown'>('inquiries');
 
   // Modals & Editors
   const [showAddFamily, setShowAddFamily] = useState(false);
@@ -190,7 +192,7 @@ export default function AdminDashboard() {
   // Families
   const handleAddFamily = async (e: React.FormEvent) => {
     e.preventDefault();
-    const slug = newFamily.slug || newFamily.name.toLowerCase().replace(/ /g, '-');
+    const slug = newFamily.slug || (newFamily.name || '').toLowerCase().replace(/ /g, '-');
     const code = newFamily.access_code || Math.random().toString(36).substring(2, 10).toUpperCase();
 
     try {
@@ -471,8 +473,17 @@ export default function AdminDashboard() {
     let fileName = `eventra_export_${activeTab}.csv`;
 
     if (activeTab === 'guests') {
-      headers = ['Name', 'Email', 'Attending', 'Guests', 'Kids', 'Preference'];
-      dataToExport = rsvps.map(r => [r.guest_name, r.email, r.attending ? 'Yes' : 'No', r.total_guests, r.children_count, r.food_preference]);
+      headers = ['Name', 'Email', 'Attending', 'Adult Guests', 'Kids', 'Dietary Requirements', 'Events', 'Last Updated'];
+      dataToExport = rsvps.map(r => [
+        r.guest_name, 
+        r.email, 
+        r.attending ? 'Yes' : 'No', 
+        r.total_guests, 
+        r.children_count,
+        r.dietary_requirements || 'None',
+        (r.events || []).join('; '),
+        new Date(r.updated_at || r.created_at).toLocaleString()
+      ]);
     } else if (activeTab === 'families') {
       headers = ['Family', 'Slug', 'Access Code', 'Capacity'];
       dataToExport = families.map(f => [f.name, f.slug, f.access_code, f.max_guests]);
@@ -546,32 +557,32 @@ export default function AdminDashboard() {
   const term = searchTerm.toLowerCase().trim();
   
   const filteredInquiries = inquiries.filter(i => 
-    i.name.toLowerCase().includes(term) || 
-    i.email.toLowerCase().includes(term) || 
-    i.phone.toLowerCase().includes(term) || 
-    i.service_selected.toLowerCase().includes(term) || 
-    i.message.toLowerCase().includes(term)
+    (i.name || '').toLowerCase().includes(term) || 
+    (i.email || '').toLowerCase().includes(term) || 
+    (i.phone || '').toLowerCase().includes(term) || 
+    (i.service_selected || '').toLowerCase().includes(term) || 
+    (i.message || '').toLowerCase().includes(term)
   );
 
   const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(term) || 
-    s.desc.toLowerCase().includes(term) || 
-    s.cat.toLowerCase().includes(term)
+    (s.name || '').toLowerCase().includes(term) || 
+    (s.desc || '').toLowerCase().includes(term) || 
+    (s.cat || '').toLowerCase().includes(term)
   );
 
   const filteredGallery = gallery.filter(g => 
-    g.lbl.toLowerCase().includes(term) || 
-    g.cat.toLowerCase().includes(term)
+    (g.lbl || '').toLowerCase().includes(term) || 
+    (g.cat || '').toLowerCase().includes(term)
   );
 
   const filteredRSVPs = rsvps.filter(r => 
-    r.guest_name.toLowerCase().includes(term) || 
-    r.email.toLowerCase().includes(term)
+    (r.guest_name || '').toLowerCase().includes(term) || 
+    (r.email || '').toLowerCase().includes(term)
   );
 
   const filteredFamilies = families.filter(f => 
-    f.name.toLowerCase().includes(term) ||
-    f.access_code.toLowerCase().includes(term)
+    (f.name || '').toLowerCase().includes(term) ||
+    (f.access_code || '').toLowerCase().includes(term)
   );
 
   return (
@@ -636,6 +647,7 @@ export default function AdminDashboard() {
           <TabButton active={activeTab === 'services'} icon={<Briefcase size={18} />} label="Services Editor" onClick={() => setActiveTab('services')} />
           <TabButton active={activeTab === 'gallery'} icon={<Image size={18} />} label="Gallery Curator" onClick={() => setActiveTab('gallery')} />
           <TabButton active={activeTab === 'map'} icon={<Map size={18} />} label="Venue Map Setup" onClick={() => setActiveTab('map')} />
+          <TabButton active={activeTab === 'countdown'} icon={<Clock size={18} />} label="Event Countdown" onClick={() => setActiveTab('countdown')} />
 
           <div className="h-[1px] bg-white/5 my-3 hidden md:block" />
           <span className="hidden md:block text-[0.55rem] uppercase tracking-widest text-[#D4AF37]/50 ml-4 mb-3 font-bold">Event Reservation</span>
@@ -643,6 +655,7 @@ export default function AdminDashboard() {
           <TabButton active={activeTab === 'transport'} icon={<Car size={18} />} label="Transport" onClick={() => setActiveTab('transport')} />
           <TabButton active={activeTab === 'rooms'} icon={<Hotel size={18} />} label="Hotel" onClick={() => setActiveTab('rooms')} />
           <TabButton active={activeTab === 'families'} icon={<Users size={18} />} label="Invites Linker" onClick={() => setActiveTab('families')} />
+          <TabButton active={activeTab === 'documents'} icon={<FileText size={18} />} label="Guest Documents" onClick={() => setActiveTab('documents')} />
 
           <div className="h-[1px] bg-white/5 my-3 hidden md:block" />
           <span className="hidden md:block text-[0.55rem] uppercase tracking-widest text-[#D4AF37]/50 ml-4 mb-3 font-bold">Security & Logs</span>
@@ -749,8 +762,14 @@ export default function AdminDashboard() {
                 {activeTab === 'map' && (
                   <MapTab showToast={showToast} onRefreshAll={fetchData} />
                 )}
+                {activeTab === 'countdown' && (
+                  <CountdownTab showToast={showToast} onRefreshAll={fetchData} />
+                )}
                 {activeTab === 'audit' && (
                   <AuditTab />
+                )}
+                {activeTab === 'documents' && (
+                  <DocumentsTab families={families} onRefresh={fetchData} showToast={showToast} />
                 )}
               </React.Suspense>
             )}

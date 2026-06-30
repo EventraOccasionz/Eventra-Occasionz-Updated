@@ -33,13 +33,16 @@ export const adminService = {
       const sessionMock = JSON.parse(sessionStorage.getItem('mock_families') || '[]');
       const allFamilies = [...items, ...sessionMock];
       
+      const uniqueFamilies = Array.from(new Map(allFamilies.map(f => [f.id, f])).values()) as Family[];
+      
       const deletedIds = JSON.parse(sessionStorage.getItem('deleted_family_ids') || '[]');
-      return allFamilies.filter(f => !deletedIds.includes(f.id));
+      return uniqueFamilies.filter(f => !deletedIds.includes(f.id));
     } catch (error: any) {
       if (error?.message?.includes("Missing or insufficient permissions")) {
          const sessionMock = JSON.parse(sessionStorage.getItem('mock_families') || '[]');
+         const uniqueMock = Array.from(new Map(sessionMock.map((f: any) => [f.id, f])).values()) as Family[];
          const deletedIds = JSON.parse(sessionStorage.getItem('deleted_family_ids') || '[]');
-         return sessionMock.filter((f: any) => !deletedIds.includes(f.id));
+         return uniqueMock.filter((f: any) => !deletedIds.includes(f.id));
       }
       handleFirestoreError(error, OperationType.GET, path);
       return [];

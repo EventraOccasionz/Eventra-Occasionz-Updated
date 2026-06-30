@@ -25,7 +25,7 @@ export default function Gallery() {
 
   const filteredItems = filter === 'all' 
     ? items 
-    : items.filter(item => item.cat.toLowerCase() === filter.toLowerCase());
+    : items.filter(item => (item.cat || '').toLowerCase() === filter.toLowerCase());
 
   return (
     <section id="gallery" className="bg-dark-1 py-32 px-8 md:px-20 relative overflow-hidden">

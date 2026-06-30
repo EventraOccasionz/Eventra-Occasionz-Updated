@@ -1,5 +1,14 @@
 export type EventType = 'Wedding' | 'Birthday' | 'Corporate' | 'Anniversary' | 'Baby Shower' | 'Engagement' | 'Other';
 
+export interface UploadedDocument {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  uploaded_at: string;
+}
+
 export interface Family {
   id: string;
   name: string; // e.g. "Sharma Family"
@@ -10,6 +19,7 @@ export interface Family {
   guest_image?: string; // Optional custom guest or family photo link (Base64 or URL)
   custom_greeting?: string; // Optional customized welcome narrative
   custom_title?: string; // Optional relationship title/caption (e.g. "Beloved Groom's Friends", "Our Honored Uncle")
+  documents?: UploadedDocument[];
 }
 
 export interface RSVP {
@@ -20,10 +30,11 @@ export interface RSVP {
   attending: boolean;
   total_guests: number;
   children_count: number;
-  food_preference: 'Veg' | 'Non-Veg' | 'Jain';
   custom_notes?: string;
+  dietary_requirements?: string;
   events: string[]; // e.g. ["Haldi", "Mehndi", "Wedding"]
   created_at: string;
+  updated_at?: string;
 }
 
 export interface TransportRequest {
@@ -35,6 +46,7 @@ export interface TransportRequest {
   arrival_time?: string;
   details?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface RoomBooking {

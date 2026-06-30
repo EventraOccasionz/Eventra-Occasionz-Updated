@@ -16,8 +16,9 @@ export default function GuestsTab({
           <th className="text-left py-4 px-4">Guest Name</th>
           <th className="text-left py-4 px-4">Attendance</th>
           <th className="text-left py-4 px-4">Group</th>
-          <th className="text-left py-4 px-4">Preference</th>
+          <th className="text-left py-4 px-4">Dietary</th>
           <th className="text-left py-4 px-4">Events</th>
+          <th className="text-left py-4 px-4">Last Updated</th>
         </tr>
       </thead>
       <tbody className="text-xs text-text-secondary">
@@ -41,8 +42,8 @@ export default function GuestsTab({
             <td className="py-4 px-4">
               Adults: {r.total_guests} / Kids: {r.children_count}
             </td>
-            <td className="py-4 px-4 italic font-medium">
-              {r.food_preference}
+            <td className="py-4 px-4 text-cream">
+              {r.dietary_requirements || <span className="opacity-40">-</span>}
             </td>
             <td className="py-4 px-4">
               <div className="flex flex-wrap gap-1">
@@ -53,11 +54,14 @@ export default function GuestsTab({
                 ))}
               </div>
             </td>
+            <td className="py-4 px-4 font-mono text-[10px] text-text-secondary/60">
+              {new Date(r.updated_at || r.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+            </td>
           </tr>
         ))}
         {filteredRSVPs.length === 0 && (
           <tr>
-            <td colSpan={5} className="py-20 text-center text-text-secondary uppercase tracking-widest opacity-40">
+            <td colSpan={6} className="py-20 text-center text-text-secondary uppercase tracking-widest opacity-40">
               No entries found
             </td>
           </tr>

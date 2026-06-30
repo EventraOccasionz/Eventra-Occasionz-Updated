@@ -13,7 +13,21 @@
         "created_at": { "type": "string" },
         "guest_image": { "type": "string" },
         "custom_greeting": { "type": "string" },
-        "custom_title": { "type": "string" }
+        "custom_title": { "type": "string" },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "size": { "type": "integer" },
+              "url": { "type": "string" },
+              "uploaded_at": { "type": "string" }
+            }
+          }
+        }
       },
       "required": ["name", "access_code", "slug", "max_guests"]
     },
@@ -29,12 +43,11 @@
         "attending": { "type": "boolean" },
         "total_guests": { "type": "integer" },
         "children_count": { "type": "integer" },
-        "food_preference": { "type": "string", "enum": ["Veg", "Non-Veg", "Jain"] },
         "custom_notes": { "type": "string" },
         "events": { "type": "array" },
         "created_at": { "type": "string" }
       },
-      "required": ["family_id", "guest_name", "email", "attending", "total_guests", "food_preference", "events"]
+      "required": ["family_id", "guest_name", "email", "attending", "total_guests", "events"]
     },
     "TransportRequest": {
       "title": "Transport Request",

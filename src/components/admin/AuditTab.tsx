@@ -30,9 +30,9 @@ export default function AuditTab() {
   const filteredLogs = logs.filter(log => {
     const isCategoryMatch = filterCategory === 'All' || log.category === filterCategory;
     const isSearchMatch = 
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.performer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase());
+      (log.action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.performer || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.details || '').toLowerCase().includes(searchTerm.toLowerCase());
     return isCategoryMatch && isSearchMatch;
   });
 

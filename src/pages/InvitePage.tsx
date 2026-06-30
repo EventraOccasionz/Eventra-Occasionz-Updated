@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dataService } from '../lib/dataService';
-import { Family, RSVP } from '../types';
-import { Loader2, Calendar, MapPin, Music, Heart, ChevronDown, Check, Car, Hotel, Languages, Map } from 'lucide-react';
+import { Family, RSVP, UploadedDocument, RoomBooking } from '../types';
+import { Loader2, Calendar, MapPin, Music, Heart, ChevronDown, Check, Car, Hotel, Languages, Map, Image as ImageIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import DocumentUploadSection from '../components/rsvp/DocumentUploadSection';
 import VenueLayoutViewer from '../components/layout/VenueLayoutViewer';
 
 export default function InvitePage() {
@@ -12,20 +13,25 @@ export default function InvitePage() {
   const navigate = useNavigate();
   const [family, setFamily] = useState<Family | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   
   // RSVP State
   const [rsvpCompleted, setRsvpCompleted] = useState(false);
+  const [originalRSVPCreatedAt, setOriginalRSVPCreatedAt] = useState<string | null>(null);
+  const [originalTransportCreatedAt, setOriginalTransportCreatedAt] = useState<string | null>(null);
+  const [roomBooking, setRoomBooking] = useState<RoomBooking | null>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [formData, setFormData] = useState({
     guest_name: '',
     email: '',
     attending: 'yes',
     total_guests: 1,
     children_count: 0,
-    food_preference: 'Veg',
     events: [] as string[],
     custom_notes: '',
+    dietary_requirements: '',
     transport_mode: 'Car',
     need_cab: false,
     pickup_location: '',
@@ -53,16 +59,105 @@ export default function InvitePage() {
       }
 
       setFamily(data);
+      if (data.documents) {
+        setUploadedDocuments(data.documents);
+      }
+
+      try {
+        const rooms = await dataService.getRooms();
+        const familyRoom = rooms.find((r: any) => r.family_id === data.id);
+        if (familyRoom) {
+          setRoomBooking(familyRoom);
+        }
+      } catch (err) {
+        console.error('Failed to load room details:', err);
+      }
+
+      // Fetch existing RSVP and Transport details
+      try {
+        const rsvps = await dataService.getRSVPs();
+        const existingRSVP = rsvps.find((r: any) => r.family_id === data.id);
+        
+        let existingTransport = null;
+        try {
+          const transports = await dataService.getTransports();
+          existingTransport = transports.find((t: any) => t.family_id === data.id);
+        } catch (err) {
+          console.error('Failed to load transport details:', err);
+        }
+
+        if (existingRSVP) {
+          setOriginalRSVPCreatedAt(existingRSVP.created_at || null);
+          if (existingTransport) {
+            setOriginalTransportCreatedAt(existingTransport.created_at || null);
+          }
+          setFormData({
+            guest_name: existingRSVP.guest_name || '',
+            email: existingRSVP.email || '',
+            attending: existingRSVP.attending ? 'yes' : 'no',
+            total_guests: existingRSVP.total_guests || 1,
+            children_count: existingRSVP.children_count || 0,
+            events: existingRSVP.events || [],
+            custom_notes: existingRSVP.custom_notes || '',
+            dietary_requirements: existingRSVP.dietary_requirements || '',
+            transport_mode: existingTransport?.mode || 'Car',
+            need_cab: existingTransport?.need_cab || false,
+            pickup_location: existingTransport?.pickup_location || '',
+            arrival_time: existingTransport?.arrival_time ? existingTransport.arrival_time.substring(0, 16) : ''
+          });
+          setRsvpCompleted(true);
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            guest_name: data.name || ''
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load RSVP details:', err);
+      }
+
       setLoading(false);
     };
 
     checkAccess();
   }, [slug, navigate]);
 
+  const handleDocumentsComplete = async (newDocs: UploadedDocument[]) => {
+    const updated = [...uploadedDocuments, ...newDocs];
+    setUploadedDocuments(updated);
+    
+    if (family) {
+      try {
+        await dataService.updateFamily(family.id, { documents: updated });
+        setFamily(prev => prev ? { ...prev, documents: updated } : null);
+      } catch (err) {
+        console.error('Error auto-saving documents:', err);
+      }
+    }
+  };
+
+  const handleDocumentDelete = async (docId: string) => {
+    const updated = uploadedDocuments.filter(d => d.id !== docId);
+    setUploadedDocuments(updated);
+    
+    if (family) {
+      try {
+        await dataService.updateFamily(family.id, { documents: updated });
+        setFamily(prev => prev ? { ...prev, documents: updated } : null);
+      } catch (err) {
+        console.error('Error auto-saving document deletion:', err);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!family) return;
-    setLoading(true);
+    if (!family || submitting) return;
+    setSubmitting(true);
+
+    const now = new Date().toISOString();
+    const rsvpCreatedAt = originalRSVPCreatedAt || now;
+    const transportCreatedAt = originalTransportCreatedAt || now;
 
     try {
       // 1. Submit RSVP
@@ -73,9 +168,10 @@ export default function InvitePage() {
         attending: formData.attending === 'yes',
         total_guests: formData.total_guests,
         children_count: formData.children_count,
-        food_preference: formData.food_preference as any,
         events: formData.events,
-        custom_notes: formData.custom_notes
+        custom_notes: formData.custom_notes,
+        dietary_requirements: formData.dietary_requirements,
+        created_at: rsvpCreatedAt
       });
 
       // 2. Submit Transport if needed
@@ -85,15 +181,18 @@ export default function InvitePage() {
             mode: formData.transport_mode as any,
             need_cab: formData.need_cab,
             pickup_location: formData.pickup_location,
-            arrival_time: formData.arrival_time ? new Date(formData.arrival_time).toISOString() : undefined
+            arrival_time: formData.arrival_time ? new Date(formData.arrival_time).toISOString() : undefined,
+            created_at: transportCreatedAt
           });
       }
 
+      setOriginalRSVPCreatedAt(rsvpCreatedAt);
+      setOriginalTransportCreatedAt(transportCreatedAt);
       setRsvpCompleted(true);
     } catch (err) {
       alert('Error submitting RSVP. Please try again.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -144,7 +243,12 @@ export default function InvitePage() {
               />
             </div>
           ) : (
-            <span className="text-gold tracking-[0.5em] text-xs uppercase mb-8 block">✦ &nbsp; Exclusive Invitation &nbsp; ✦</span>
+            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-full border-2 border-dashed border-gold/30 flex flex-col items-center justify-center mx-auto mb-8 bg-black/30 p-4 text-center">
+              <ImageIcon className="text-gold/40 mb-2 animate-pulse" size={24} />
+              <span className="text-[10px] uppercase tracking-widest text-[#D4AF37]/60 font-mono leading-tight max-w-[120px]">
+                A beautiful space reserved for family photo
+              </span>
+            </div>
           )}
 
           {family.custom_title && (
@@ -237,6 +341,44 @@ export default function InvitePage() {
         </motion.div>
       </section>
 
+      {/* Room Number Section */}
+      <section className="max-w-6xl mx-auto px-6 py-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-white/5 border border-gold/20 p-8 rounded-2xl relative overflow-hidden"
+        >
+          {/* Subtle design decals */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[radial-gradient(circle_at_top_right,rgba(201,168,76,0.1),transparent)] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-[radial-gradient(circle_at_bottom_left,rgba(201,168,76,0.1),transparent)] pointer-events-none" />
+
+          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10 text-left">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gold/10 rounded-full flex items-center justify-center border border-gold/20 flex-shrink-0">
+                <Hotel className="text-gold" size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl text-cream mb-1">Room Number</h3>
+                <p className="text-lg font-mono text-gold font-semibold tracking-wide">
+                  {roomBooking?.room_number ? (
+                    <span>Room {roomBooking.room_number} <span className="text-xs text-text-secondary font-sans font-normal">({roomBooking.hotel_name || 'The Grand Palace Resort'})</span></span>
+                  ) : (
+                    "To be Assigned"
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gold/5 border border-gold/20 rounded-xl p-5 max-w-xl">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <strong className="text-gold">Note:</strong> Room numbers will be allotted <strong className="text-gold">7–10 days before the function</strong>. Guests will receive their assigned room details before the event.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* Advanced RSVP & Management Form */}
       <section id="rsvp-section" className="max-w-4xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
@@ -257,7 +399,7 @@ export default function InvitePage() {
             <h3 className="font-serif text-3xl text-cream mb-4">RSVP Confirmed!</h3>
             <p className="text-text-secondary mb-10 italic">"Thank you for your response, {family.name}. We are thrilled to celebrate with you!"</p>
             
-            <div className="flex flex-col items-center gap-6 p-8 border border-white/5 bg-black/40 rounded-2xl">
+            <div className="flex flex-col items-center gap-6 p-8 border border-white/5 bg-black/40 rounded-2xl mb-8">
                <p className="text-[10px] uppercase tracking-[0.3em] text-gold">Your Digital Entry Pass</p>
                <QRCodeSVG 
                  value={`${window.location.origin}${window.location.pathname}#/pass/${family.slug}`} 
@@ -266,8 +408,14 @@ export default function InvitePage() {
                  fgColor="#D4AF37"
                />
                <p className="text-[9px] text-[#D4AF37]/50 uppercase tracking-widest mt-4">Present this QR code for priority entry</p>
-
             </div>
+
+            <button
+              onClick={() => setRsvpCompleted(false)}
+              className="px-6 py-3 border border-gold/40 text-gold hover:bg-gold/10 text-xs uppercase tracking-widest transition-colors font-bold rounded-xl"
+            >
+              Update RSVP Response
+            </button>
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-12 bg-[#121212] border border-white/5 p-8 md:p-12 rounded-2xl">
@@ -370,21 +518,31 @@ export default function InvitePage() {
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Dietary Preference</label>
-                    <div className="flex gap-4">
-                      {['Veg', 'Non-Veg', 'Jain'].map(pref => (
-                        <button
-                          key={pref}
-                          type="button"
-                          onClick={() => setFormData({...formData, food_preference: pref as any})}
-                          className={`flex-1 py-3 border rounded-xl text-[10px] uppercase tracking-widest transition-all font-bold
-                            ${formData.food_preference === pref ? 'bg-gold text-black border-gold' : 'bg-white/5 border-white/10 text-white/40'}`}
-                        >
-                          {pref}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex flex-col gap-3 pt-2">
+                  <label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Dietary Requirements / Food Preferences</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {['Vegetarian', 'Vegan', 'Gluten-Free', 'No Restrictions'].map(diet => (
+                      <button
+                        key={diet}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, dietary_requirements: diet })}
+                        className={`py-3 border rounded-xl text-[10px] uppercase tracking-widest transition-all font-bold
+                          ${formData.dietary_requirements === diet ? 'bg-gold text-black border-gold' : 'bg-white/5 border-white/10 text-white/40 hover:border-gold/20'}`}
+                      >
+                        {diet}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-2 mt-2">
+                    <label className="text-[8px] uppercase tracking-widest text-[#D4AF37]/40">Other Allergies or Custom Food Notes (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Peanut allergy, diabetic options, lacto-vegetarian..."
+                      className="bg-black/40 border border-white/10 rounded-xl p-4 text-xs text-text-primary outline-none focus:border-gold transition-colors placeholder-white/20"
+                      value={['Vegetarian', 'Vegan', 'Gluten-Free', 'No Restrictions'].includes(formData.dietary_requirements) ? '' : formData.dietary_requirements}
+                      onChange={e => setFormData({...formData, dietary_requirements: e.target.value})}
+                    />
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -455,30 +613,46 @@ export default function InvitePage() {
                </motion.div>
             )}
 
+            {/* Step 4: Document Verification Upload */}
+            {formData.attending === 'yes' && (
+              <DocumentUploadSection 
+                existingDocuments={uploadedDocuments}
+                onUploadComplete={handleDocumentsComplete}
+                onDeleteDocument={handleDocumentDelete}
+              />
+            )}
+
             {/* Room Info */}
             <motion.div 
                initial={{ opacity: 0 }}
                whileInView={{ opacity: 1 }}
                viewport={{ once: true }}
-               className="bg-gold/5 p-8 border border-white/5 rounded-2xl flex items-start gap-4"
+               className="bg-gold/5 p-8 border border-white/5 rounded-2xl flex items-start gap-4 text-left"
             >
                <Hotel className="text-gold flex-shrink-0" size={24} />
                <div>
                   <h5 className="text-[10px] uppercase tracking-[0.2em] text-gold mb-1">Accommodation Status</h5>
                   <p className="text-sm text-text-secondary font-light">
-                    Your room allocation will be visible here once assigned by the host. 
-                    <br /><span className="text-gold/60 text-xs italic">Stay updated on our premium hotel arrangements.</span>
+                    {roomBooking?.room_number ? (
+                      <span>Assigned Room: <strong className="text-gold">{roomBooking.room_number}</strong> ({roomBooking.hotel_name || 'The Grand Palace Resort'})</span>
+                    ) : (
+                      <span>Will be allotted before the function.</span>
+                    )}
+                    <br />
+                    <span className="text-gold/60 text-xs italic">
+                      <strong>Note:</strong> Room numbers will be allotted <strong>7–10 days before the function</strong>. Guests will receive their assigned room details before the event.
+                    </span>
                   </p>
                </div>
             </motion.div>
 
             <div className="pt-10">
               <button
-                disabled={loading}
+                disabled={loading || submitting}
                 type="submit"
                 className="btn-primary w-full py-5 text-[14px]"
               >
-                {loading ? 'Confirming Protocol...' : 'Confirm My Presence'}
+                {submitting ? 'Confirming Protocol...' : 'Confirm My Presence'}
               </button>
             </div>
           </form>
