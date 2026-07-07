@@ -6,8 +6,8 @@ import { dataService } from '../../lib/dataService';
 export default function Contact() {
   const [venueSettings, setVenueSettings] = useState<any>({
     venue_name: 'Our Location',
-    address: 'Shop No.85, Dev Shoping Complex, Bhabat Rd, Jarnail Enclave Phase 1, Utrathiya, Zirakpur, Punjab 140603, India',
-    google_maps_url: 'https://maps.google.com/?q=Shop+No.85,+Dev+Shoping+Complex,+Bhabat+Rd,+Jarnail+Enclave+Phase+1,+Utrathiya,+Zirakpur,+Punjab+140603,+India'
+    address: 'Shop No.85, Dev Shoping Complex, Bhabat Rd, Jarnail Enclave Phase 1, Utrathiya, Zirakpur, Punjab 140603',
+    google_maps_url: 'https://maps.google.com/?q=Shop+No.85,+Dev+Shoping+Complex,+Bhabat+Rd,+Jarnail+Enclave+Phase+1,+Utrathiya,+Zirakpur,+Punjab+140603'
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -67,7 +67,7 @@ export default function Contact() {
 
   return (
     <section id="contact" className="bg-dark-2 py-32 px-8 md:px-20">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start mb-24">
         
         <motion.div
           initial={{ opacity: 0, x: -40 }}
@@ -226,6 +226,25 @@ export default function Contact() {
         </motion.div>
 
       </div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="max-w-7xl mx-auto w-full h-[400px] border border-gold/20 relative grayscale hover:grayscale-0 transition-all duration-500"
+      >
+        <iframe 
+          src="https://maps.google.com/maps?q=Shop+No.85,+Dev+Shoping+Complex,+Bhabat+Rd,+Jarnail+Enclave+Phase+1,+Utrathiya,+Zirakpur,+Punjab+140603&t=&z=15&ie=UTF8&iwloc=&output=embed"
+          width="100%" 
+          height="100%" 
+          style={{ border: 0 }} 
+          allowFullScreen={false} 
+          loading="lazy" 
+          referrerPolicy="no-referrer-when-downgrade"
+          title="Eventra Occasionz Location Map"
+        ></iframe>
+        <div className="absolute inset-0 pointer-events-none border-[6px] border-dark-2 z-10" />
+      </motion.div>
     </section>
   );
 }

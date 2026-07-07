@@ -5,6 +5,7 @@ import { verifyFirebaseConnection, db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { KeyRound, User, UserPlus, Sparkles, Check, ChevronRight, Volume2, VolumeX, ShieldAlert, Chrome } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import eventraLogo from '../../assets/images/eventra_logo_1783423905494.jpg';
 
 const syntheticSounds = {
   play(type: 'success' | 'error' | 'click' | 'intro') {
@@ -580,8 +581,13 @@ export default function LoadingGateway({ onUnlock, forcingGate = false, onCancel
               <div className="absolute w-24 h-24 border border-gold/10 rounded-full animate-pulse" />
               <div className="absolute w-20 h-20 border border-dashed border-gold/25 rounded-full animate-[spin_10s_linear_infinite]" />
               <div className="absolute w-14 h-14 border border-gold/40 rotate-45 flex items-center justify-center animate-[spin_18s_linear_infinite]" />
-              <div className="w-12 h-12 bg-dark border-2 border-gold rotate-45 flex items-center justify-center">
-                <span className="-rotate-45 text-gold font-serif text-lg font-bold tracking-tighter">EO</span>
+              <div className="w-20 h-20 flex items-center justify-center z-10">
+                <img 
+                  src={eventraLogo} 
+                  alt="Eventra Occasionz Logo" 
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
             </div>
 

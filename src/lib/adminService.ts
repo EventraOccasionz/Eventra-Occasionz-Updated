@@ -287,10 +287,10 @@ export const adminService = {
     const defaultSettings = {
       id: 'default',
       venue_name: 'Dev Shopping Complex Event Hall',
-      address: 'Shop No.85, Dev Shoping Complex, Bhabat Rd, Jarnail Enclave Phase 1, Utrathiya, Zirakpur, Punjab 140603, India',
+      address: 'Shop No.85, Dev Shoping Complex, Bhabat Rd, Jarnail Enclave Phase 1, Utrathiya, Zirakpur, Punjab 140603',
       lat: 30.6425,
       lng: 76.8283,
-      google_maps_url: 'https://maps.google.com/?q=Shop+No.85,+Dev+Shoping+Complex,+Bhabat+Rd,+Jarnail+Enclave+Phase+1,+Utrathiya,+Zirakpur,+Punjab+140603,+India',
+      google_maps_url: 'https://maps.google.com/?q=Shop+No.85,+Dev+Shoping+Complex,+Bhabat+Rd,+Jarnail+Enclave+Phase+1,+Utrathiya,+Zirakpur,+Punjab+140603',
       interactive_map_url: '', // Empty means fallback to default asset map
       zoom: 15,
       updated_at: new Date().toISOString()

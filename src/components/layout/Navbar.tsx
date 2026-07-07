@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dataService } from '../../lib/dataService';
+import eventraLogo from '../../assets/images/eventra_logo_1783423905494.jpg';
 
 const navLinks = [
   { name: 'Services', href: '#services' },
@@ -81,9 +82,12 @@ export default function Navbar() {
             : 'bg-transparent py-6'}`}
       >
         <Link to="/" className="flex items-center gap-3 md:gap-4 group">
-          <div className="w-8 h-8 md:w-10 md:h-10 border border-gold rotate-45 flex items-center justify-center transition-transform group-hover:rotate-90">
-            <span className="-rotate-45 text-gold font-serif text-lg md:text-xl tracking-tighter group-hover:-rotate-90">EO</span>
-          </div>
+          <img 
+            src={eventraLogo} 
+            alt="Eventra Occasionz Logo" 
+            className="w-12 h-12 md:w-[3.5rem] md:h-[3.5rem] object-contain transition-transform duration-300 group-hover:scale-105"
+            referrerPolicy="no-referrer"
+          />
           <h1 className="hidden sm:block font-serif text-xl md:text-2xl tracking-[0.2em] uppercase text-gold text-nowrap">Eventra Occasionz</h1>
         </Link>
 
@@ -166,9 +170,12 @@ export default function Navbar() {
             transition={{ duration: 0.4 }}
             className="fixed inset-0 bg-dark/95 z-[990] flex flex-col items-center justify-center gap-6"
           >
-            <div className="w-10 h-10 border border-gold rotate-45 flex items-center justify-center">
-              <span className="-rotate-45 text-gold font-serif text-lg tracking-tighter">EO</span>
-            </div>
+            <img 
+              src={eventraLogo} 
+              alt="Eventra Occasionz Logo" 
+              className="w-20 h-20 object-contain"
+              referrerPolicy="no-referrer"
+            />
             
             {authType && (
               <div className="text-center bg-gold/5 border border-gold/20 p-4 rounded-xl w-4/5 max-w-xs mb-2">
