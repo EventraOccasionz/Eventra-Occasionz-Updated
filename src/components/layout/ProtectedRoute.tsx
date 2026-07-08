@@ -21,7 +21,6 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
     let active = true;
 
     const checkAuth = async (user: any) => {
-      // Direct offline and unconfigured database route block
       if (!dataService.isConfigured()) {
         if (active) {
           setAuthorized(false);
@@ -31,11 +30,11 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
       }
 
       try {
-        // Fetch registered_accounts profile to check role
         const profileDoc = await getDoc(doc(db, 'registered_accounts', user.uid));
         const isAdminProfile = profileDoc.exists() && profileDoc.data()?.role === 'admin';
+        const whitelist = await dataService.getAdminWhitelist();
+        const isDevAdmin = user.email ? whitelist.includes(user.email.toLowerCase().trim()) : false;
 
-        // Check if admin_users collection contains the user
         let isAdminInCollection = false;
         try {
           const adminDoc = await getDoc(doc(db, 'admin_users', user.uid));
@@ -44,8 +43,22 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
           }
         } catch (_) {}
 
-        if (isAdminProfile || isAdminInCollection) {
-          // Sync safe informational helper local state
+        if (isAdminProfile || isAdminInCollection || isDevAdmin) {
+          // Check OTP requirement for admins
+          const isOtpVerified = localStorage.getItem('admin_otp_verified') === 'true';
+          const otpTimestamp = parseInt(localStorage.getItem('admin_otp_timestamp') || '0');
+          // Session timeout: 24 hours
+          const isOtpFresh = Date.now() - otpTimestamp < 24 * 60 * 60 * 1000;
+
+          if (!isOtpVerified || !isOtpFresh) {
+            localStorage.removeItem('admin_otp_verified');
+            if (active) {
+              setAuthorized(false);
+              setLoading(false);
+            }
+            return;
+          }
+
           localStorage.setItem('user_email', user.email || '');
           localStorage.setItem('user_role', 'admin');
           localStorage.setItem('user_name', (profileDoc.exists() && profileDoc.data()?.name) || user.displayName || 'Administrator');
@@ -70,7 +83,6 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
       }
     };
 
-    // Subscribe to real-time auth changes via Firebase
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         checkAuth(user);
@@ -79,6 +91,8 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
         localStorage.removeItem('user_role');
         localStorage.removeItem('user_email');
         localStorage.removeItem('user_name');
+        localStorage.removeItem('admin_otp_verified');
+        localStorage.removeItem('admin_otp_timestamp');
         if (active) {
           setAuthorized(false);
           setLoading(false);
@@ -91,6 +105,38 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
       unsubscribe();
     };
   }, []);
+
+
+  // Inactivity Logout
+  useEffect(() => {
+    if (!authorized) return;
+
+    let timeoutId: any;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // 15 minutes of inactivity
+      timeoutId = setTimeout(async () => {
+        try {
+          await dataService.logout();
+          window.location.href = '/#/admin/login';
+        } catch (e) {}
+      }, 15 * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, resetTimer, true);
+    });
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimer, true);
+      });
+    };
+  }, [authorized]);
 
   if (loading) {
     return (
@@ -109,7 +155,6 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin'] }: P
   }
 
   if (!authorized) {
-    // Redirect unauthorized attempt to the login suite
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 

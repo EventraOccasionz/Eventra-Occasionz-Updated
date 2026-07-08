@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
 import { dataService } from '../../lib/dataService';
+import AuthModal from '../layout/AuthModal';
+import { authService } from '../../lib/authService';
 
 export default function BookingForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
-  // Controlled inputs state mapping to our backend inquiries schema
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -16,8 +18,7 @@ export default function BookingForm() {
   const [guestCount, setGuestCount] = useState('');
   const [notes, setNotes] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processSubmit = async () => {
     setLoading(true);
     try {
       const selectedServiceDetails = `${eventType} Event (${guestCount} guests, on ${preferredDate})`;
@@ -36,6 +37,16 @@ export default function BookingForm() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+    await processSubmit();
   };
 
   return (
@@ -163,6 +174,14 @@ export default function BookingForm() {
           </form>
         )}
       </div>
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          processSubmit();
+        }}
+      />
     </section>
   );
 }

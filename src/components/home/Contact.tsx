@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { dataService } from '../../lib/dataService';
+import AuthModal from '../layout/AuthModal';
+import { authService } from '../../lib/authService';
 
 export default function Contact() {
   const [venueSettings, setVenueSettings] = useState<any>({
@@ -15,6 +17,8 @@ export default function Contact() {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -30,41 +34,35 @@ export default function Contact() {
     loadSettings();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processSubmit = async () => {
     setLoading(true);
-    
     try {
-      // Still log to database for internal admin tracking
       await dataService.addInquiry({
-        name: name,
-        email: email,
-        phone: 'N/A', // contact form has no phone field
-        service_selected: `Contact: ${subject}`,
-        message: message,
+        name,
+        email,
+        phone: 'Not provided', // General contact form doesn't ask for phone by default in this component
+        service_selected: `General Inquiry: ${subject}`,
+        message,
         status: 'Pending'
       });
+      setIsSubmitted(true);
     } catch (err) {
-      console.error('Error submitting contact form to database:', err);
-      // We don't alert here because we still want to trigger the email
+      console.error('Error submitting contact message:', err);
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // Trigger local email client to send message directly to eventraoccasionz@gmail.com
-    const mailtoParams = new URLSearchParams({
-      subject: `New Inquiry from ${name} - ${subject}`,
-      body: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-    }).toString();
-    
-    window.location.href = `mailto:eventraoccasionz@gmail.com?${mailtoParams.replace(/\+/g, '%20')}`;
-
-    setIsSubmitted(true);
-    setName('');
-    setEmail('');
-    setSubject('');
-    setMessage('');
-    setLoading(false);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) {
+      setShowAuthModal(true);
+      return;
+    }
+    await processSubmit();
+  };
   return (
     <section id="contact" className="bg-dark-2 py-32 px-8 md:px-20">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start mb-24">
@@ -245,6 +243,14 @@ export default function Contact() {
         ></iframe>
         <div className="absolute inset-0 pointer-events-none border-[6px] border-dark-2 z-10" />
       </motion.div>
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          processSubmit();
+        }}
+      />
     </section>
   );
 }

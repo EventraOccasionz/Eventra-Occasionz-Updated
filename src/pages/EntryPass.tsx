@@ -101,44 +101,14 @@ export default function EntryPass() {
     fetchPassAndRsvp();
   }, [slug]);
 
-  // Audio setup
+  // Audio setup disabled to avoid NotSupportedError
   useEffect(() => {
-    if (isOpen) {
-      const audio = new Audio(BG_MUSIC_URL);
-      audio.loop = true;
-      audio.volume = 0.45;
-      audioRef.current = audio;
-      
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => setIsPlaying(true))
-          .catch(e => {
-            console.log("Audio autoplay restricted by browser policies:", e);
-            setIsPlaying(false);
-          });
-      }
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+    // Audio feature disabled
   }, [isOpen]);
 
   // Handle music toggle
   const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(err => console.warn(err));
-    }
+    setIsPlaying(!isPlaying);
   };
 
   // Target Ceremony Countdown

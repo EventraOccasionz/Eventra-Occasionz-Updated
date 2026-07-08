@@ -2,12 +2,9 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { useEffect, useState } from 'react';
-import LoadingGateway from './LoadingGateway';
+import AuthModal from './AuthModal';
 
 export default function Layout() {
-  const [unlocked, setUnlocked] = useState(() => {
-    return !!sessionStorage.getItem('eventra_auth_type');
-  });
   const [forcingGate, setForcingGate] = useState(false);
 
   // Listener for direct gate login request
@@ -102,13 +99,13 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-dark text-text-primary selection:bg-gold selection:text-dark">
-      {(!unlocked || forcingGate) && (
-        <LoadingGateway 
-          onUnlock={() => setUnlocked(true)} 
-          forcingGate={forcingGate} 
-          onCancelForce={() => setForcingGate(false)} 
-        />
-      )}
+      <AuthModal 
+        isOpen={forcingGate} 
+        onClose={() => setForcingGate(false)} 
+        onSuccess={() => {
+          setForcingGate(false);
+        }} 
+      />
       <Navbar />
       <main className="flex-grow">
         <Outlet />

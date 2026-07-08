@@ -24,6 +24,7 @@ const FamiliesTab = React.lazy(() => import('../components/admin/FamiliesTab'));
 const TransportTab = React.lazy(() => import('../components/admin/TransportTab'));
 const RoomsTab = React.lazy(() => import('../components/admin/RoomsTab'));
 const AuditTab = React.lazy(() => import('../components/admin/AuditTab'));
+const StaffTab = React.lazy(() => import('../components/admin/StaffTab'));
 const MapTab = React.lazy(() => import('../components/admin/MapTab'));
 const DocumentsTab = React.lazy(() => import('../components/admin/DocumentsTab'));
 const CountdownTab = React.lazy(() => import('../components/admin/CountdownTab'));
@@ -46,7 +47,7 @@ export default function AdminDashboard() {
 
   // Search / Tab States
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'services' | 'gallery' | 'guests' | 'families' | 'transport' | 'rooms' | 'audit' | 'map' | 'documents' | 'countdown'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'services' | 'gallery' | 'guests' | 'families' | 'transport' | 'rooms' | 'audit' | 'map' | 'documents' | 'countdown' | 'staff'>('inquiries');
 
   // Modals & Editors
   const [showAddFamily, setShowAddFamily] = useState(false);
@@ -129,9 +130,23 @@ export default function AdminDashboard() {
             if (change.type === 'added') {
               const d = change.doc.data();
               try {
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
-                audio.volume = 0.5;
-                audio.play();
+                // Use AudioContext for a simple beep instead of external URL to avoid 403 errors
+                try {
+                  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                  if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.5);
+                  }
+                } catch (e) { console.warn(e); }
               } catch (_) {}
 
               setFeedback({
@@ -660,6 +675,7 @@ export default function AdminDashboard() {
           <div className="h-[1px] bg-white/5 my-3 hidden md:block" />
           <span className="hidden md:block text-[0.55rem] uppercase tracking-widest text-[#D4AF37]/50 ml-4 mb-3 font-bold">Security & Logs</span>
           <TabButton active={activeTab === 'audit'} icon={<Shield size={18} />} label="Audit Trails" onClick={() => setActiveTab('audit')} />
+          <TabButton active={activeTab === 'staff'} icon={<Users size={18} />} label="Admin & Staff" onClick={() => setActiveTab('staff')} />
         </div>
 
         {/* Dynamic Display Area */}
@@ -767,6 +783,9 @@ export default function AdminDashboard() {
                 )}
                 {activeTab === 'audit' && (
                   <AuditTab />
+                )}
+                {activeTab === 'staff' && (
+                  <StaffTab />
                 )}
                 {activeTab === 'documents' && (
                   <DocumentsTab families={families} onRefresh={fetchData} showToast={showToast} />
